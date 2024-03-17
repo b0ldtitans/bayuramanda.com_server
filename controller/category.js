@@ -195,7 +195,7 @@ exports.getAllCategories = async (req, res) => {
         };
       })
     );
-
+    // commit
     return res.status(200).json({
       ok: true,
       status: 200,
