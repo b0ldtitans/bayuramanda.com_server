@@ -4,9 +4,19 @@ const imageController = require("../controller/image");
 const { multerUpload } = require("../lib/multer");
 const authValidator = require("../validator/auth");
 
-router.get("/:categoryId", imageController.getImageByCategory);
-router.get("/:categoryName", imageController.getImageByCategoryName);
+router.get("/category/:categoryId", imageController.getImagesByCategoryId);
+router.get(
+  "/deleted",
+  authValidator.validateToken,
+  imageController.getDeletedImages
+);
 router.get("/", imageController.getAllImage);
+
+router.patch(
+  "/:id",
+  authValidator.validateToken,
+  imageController.restoreDeletedImage
+);
 
 router.post(
   "/:categoryId?",

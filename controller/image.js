@@ -1,104 +1,7 @@
-const { Image, Category } = require("../models");
+const { Image, Category, Account } = require("../models");
 const { Sequelize, Op } = require("sequelize");
 const path = require("path");
 const sharp = require("sharp");
-
-exports.getImageByCategory = async (req, res) => {
-  const { categoryId } = req.params;
-  try {
-    const category = await Category.findOne({
-      where: {
-        id: categoryId,
-        deletedAt: {
-          [Op.not]: null,
-        },
-      },
-      attributes: ["name"],
-      paranoid: false,
-    });
-
-    if (category) {
-      return res.status(400).json({
-        ok: false,
-        status: 400,
-        message: "Category not found",
-      });
-    }
-
-    const data = await Category.findAll({
-      where: {
-        id: categoryId,
-      },
-      attributes: ["name"],
-    });
-
-    const imageData = await Image.findAll({
-      where: {
-        categoryId: categoryId,
-      },
-      attributes: ["img", "alt"],
-    });
-
-    return res.status(200).json({
-      ok: true,
-      status: 200,
-      category: data[0].name,
-      data: {
-        imageData,
-      },
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      ok: false,
-      status: 500,
-      message: "Internal Server Error",
-    });
-  }
-};
-
-exports.getImageByCategoryName = async (req, res) => {
-  const { categoryName } = req.query.category;
-  try {
-    const category = await Category.findOne({
-      where: {
-        name: categoryName,
-      },
-      attributes: ["name", "id"],
-      include: {
-        model: Image,
-        where: {
-          categoryId: category.id,
-        },
-        attributes: ["img", "alt"],
-      },
-    });
-
-    console.log(category);
-
-    if (!category) {
-      return res.status(400).json({
-        ok: false,
-        status: 400,
-        message: "Category not found",
-      });
-    }
-
-    return res.status(200).json({
-      ok: true,
-      status: 200,
-      category: data[0].name,
-      data: category,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      ok: false,
-      status: 500,
-      message: "Internal Server Error",
-    });
-  }
-};
 
 exports.getAllImage = async (req, res) => {
   const { categoryName } = req.query;
@@ -115,7 +18,7 @@ exports.getAllImage = async (req, res) => {
         return res.status(400).json({
           ok: false,
           status: 400,
-          message: `Category does not exist`,
+          message: `Category: ${categoryName} does not exist`,
         });
       }
 
@@ -131,15 +34,60 @@ exports.getAllImage = async (req, res) => {
         images,
       });
     }
+
     const images = await Image.findAll({
       attributes: ["id", "thumbnail", "img", "alt", "categoryId"],
       order: [Sequelize.literal("RAND()")],
     });
-
     return res.status(200).json({
       ok: true,
       status: 200,
       images,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      status: 500,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getImagesByCategoryId = async (req, res) => {
+  const { categoryId } = req.params;
+  const limit = parseInt(req.query.limit) || 0;
+  const page = parseInt(req.query.page) || 1;
+  const offset = limit * (page - 1);
+
+  try {
+    const category = await Category.findOne({
+      where: { id: categoryId },
+      attributes: ["name", "description", "id"],
+      include: {
+        model: Image,
+        limit,
+        offset,
+      },
+    });
+
+    if (!category) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: `Category does not exist`,
+      });
+    }
+
+    // Get the total count of images for the category
+    const totalCount = await Image.count({ where: { categoryId } });
+
+    return res.status(200).json({
+      ok: true,
+      status: 200,
+      category: category.name,
+      data: category,
+      totalCount,
     });
   } catch (error) {
     console.error(error);
@@ -244,6 +192,80 @@ exports.uploadHandler = async (req, res) => {
       status: 200,
       message: "Images successfully uploaded",
       data: img,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      status: 500,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.deleteImage = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await Image.destroy({
+      where: { id },
+      paranoid: true,
+    });
+
+    return res.status(200).json({
+      ok: true,
+      status: 200,
+      message: "Image deleted successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      status: 500,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getDeletedImages = async (req, res) => {
+  try {
+    const images = await Image.findAll({
+      where: {
+        deletedAt: {
+          [Op.ne]: null,
+        },
+        paranoid: false,
+      },
+    });
+
+    return res.status(200).json({
+      ok: true,
+      status: 200,
+      images,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      status: 500,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.restoreDeletedImage = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const image = await Image.restore({
+      where: { id },
+    });
+
+    return res.status(200).json({
+      ok: true,
+      status: 200,
+      message: "Image restored successfully",
+      data: image,
     });
   } catch (error) {
     console.error(error);

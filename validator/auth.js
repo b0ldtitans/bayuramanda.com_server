@@ -43,3 +43,47 @@ exports.validateToken = (req, res, next) => {
     });
   }
 };
+
+exports.verifyToken = async (req, res) => {
+  let token = req.headers.authorization;
+  if (!token) {
+    return res.status(401).json({
+      ok: false,
+      status: 401,
+      message: "Unauthorized",
+      isValid: false,
+    });
+  }
+  try {
+    token = await token.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({
+        ok: false,
+        status: 401,
+        message: "Unauthorized",
+        isValid: false,
+      });
+    }
+
+    const payload = jwt.verify(token, JWT_SECRET_KEY);
+    if (!payload) {
+      return res.status(401).json({
+        ok: false,
+        message: "Failed to get authorization data",
+        isValid: false,
+      });
+    }
+
+    res.status(200).json({
+      ok: true,
+      message: "Token is valid",
+      isValid: true,
+    });
+  } catch (error) {
+    res.status(401).json({
+      ok: false,
+      message: String(error),
+      isValid: false,
+    });
+  }
+};

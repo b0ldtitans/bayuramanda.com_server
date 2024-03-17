@@ -1,4 +1,5 @@
-const { Category, Account } = require("../models");
+const { Category, Account, Image } = require("../models");
+const { Op } = require("sequelize");
 
 exports.createCategory = async (req, res) => {
   const { name } = req.body;
@@ -149,14 +150,56 @@ exports.deleteCategory = async (req, res) => {
 };
 
 exports.getAllCategories = async (req, res) => {
+  const { categoryId } = req.params;
   try {
+    if (categoryId) {
+      const category = await Category.findOne({
+        where: {
+          id: categoryId,
+        },
+      });
+      if (!category) {
+        return res.status(404).json({
+          ok: false,
+          status: 404,
+          message: "Category not found",
+        });
+      }
+      const imageCount = await Image.count({
+        where: {
+          categoryId: categoryId,
+        },
+      });
+      return res.status(200).json({
+        ok: true,
+        status: 200,
+        category,
+        imageCount,
+      });
+    }
+
     const categories = await Category.findAll({
       attributes: ["id", "name", "description"],
     });
+
+    const categoriesWithImageCount = await Promise.all(
+      categories.map(async (category) => {
+        const imageCount = await Image.count({
+          where: {
+            categoryId: category.id,
+          },
+        });
+        return {
+          ...category.toJSON(),
+          imageCount,
+        };
+      })
+    );
+
     return res.status(200).json({
       ok: true,
       status: 200,
-      categories,
+      categories: categoriesWithImageCount,
     });
   } catch (error) {
     console.error(error);
@@ -182,5 +225,66 @@ exports.getCategoryById = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
+  }
+};
+
+exports.getDeletedCategories = async (req, res) => {
+  try {
+    const categories = await Category.findAll({
+      where: {
+        deletedAt: {
+          [Op.ne]: null,
+        },
+      },
+      paranoid: false,
+    });
+
+    return res.status(200).json({
+      ok: true,
+      status: 200,
+      categories,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      ok: false,
+      status: 500,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.restoreCategory = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const category = await Category.findOne({
+      paranoid: false,
+      where: { id },
+    });
+
+    if (!category) {
+      return res.status(404).json({
+        ok: false,
+        status: 404,
+        message: "Category not found",
+      });
+    }
+
+    await Category.restore({
+      where: { id },
+    });
+
+    return res.status(200).json({
+      ok: true,
+      status: 200,
+      message: "Category restored successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      status: 500,
+      message: "Internal Server Error",
+    });
   }
 };
