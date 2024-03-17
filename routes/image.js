@@ -10,13 +10,16 @@ router.get(
   authValidator.validateToken,
   imageController.getDeletedImages
 );
-router.get("/", imageController.getAllImage);
+
+router.get("/:imageId?", imageController.getAllImage);
 
 router.patch(
   "/:id",
   authValidator.validateToken,
   imageController.restoreDeletedImage
 );
+
+router.delete("/:id", authValidator.validateToken, imageController.deleteImage);
 
 router.post(
   "/:categoryId?",
