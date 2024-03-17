@@ -84,6 +84,7 @@ exports.getUserProfile = async (req, res) => {
 exports.updateUserProfile = async (req, res) => {
   const { id } = req.user;
   const { fullname, email, username } = req.body;
+  console.log(req.file);
 
   try {
     const user = await Account.findByPk(id);
@@ -94,29 +95,26 @@ exports.updateUserProfile = async (req, res) => {
         message: "User not found",
       });
     }
-    const existingUser = await Account.findOne({
-      where: {
-        [Op.or]: [{ email }, { username }],
-      },
-    });
-    if (existingUser) {
-      return res.status(400).json({
-        ok: false,
-        status: 400,
-        message: "Email or username already exists",
-      });
+
+    if (fullname) {
+      user.fullname = fullname;
     }
-    await user.update({
-      fullname,
-      email,
-      username,
-    });
+
+    if (email) {
+      user.email = email;
+    }
+
+    if (username) {
+      user.username = username;
+    }
 
     if (req.file) {
-      await user.update({
-        profilePicture: req.file.filename,
-      });
+      user.profilePicture = req.file.filename;
+    } else {
+      user.profilePicture = user.profilePicture || null;
     }
+
+    await user.save();
 
     return res.status(200).json({
       ok: true,

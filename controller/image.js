@@ -5,6 +5,7 @@ const sharp = require("sharp");
 
 exports.getAllImage = async (req, res) => {
   const { categoryName } = req.query;
+  const { imageId } = req.params;
 
   try {
     if (categoryName) {
@@ -32,6 +33,23 @@ exports.getAllImage = async (req, res) => {
         ok: true,
         status: 200,
         images,
+      });
+    }
+
+    if (imageId) {
+      const image = await Image.findByPk(imageId);
+      if (!image) {
+        return res.status(400).json({
+          ok: false,
+          status: 400,
+          message: `Image does not exist`,
+        });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        status: 200,
+        image,
       });
     }
 
@@ -230,11 +248,11 @@ exports.deleteImage = async (req, res) => {
 exports.getDeletedImages = async (req, res) => {
   try {
     const images = await Image.findAll({
+      paranoid: false,
       where: {
         deletedAt: {
-          [Op.ne]: null,
+          [Op.not]: null,
         },
-        paranoid: false,
       },
     });
 
@@ -242,6 +260,52 @@ exports.getDeletedImages = async (req, res) => {
       ok: true,
       status: 200,
       images,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      status: 500,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.updateImageCaption = async (req, res) => {
+  const { id } = req.params;
+  const { alt } = req.body;
+
+  try {
+    const image = await Image.findOne({
+      where: {
+        id,
+      },
+    });
+
+    if (!image) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "Image does not exist",
+      });
+    }
+
+    const updatedImage = await Image.update(
+      {
+        alt,
+      },
+      {
+        where: {
+          id,
+        },
+      }
+    );
+
+    return res.status(200).json({
+      ok: true,
+      status: 200,
+      message: "Image caption updated successfully",
+      data: updatedImage,
     });
   } catch (error) {
     console.error(error);
