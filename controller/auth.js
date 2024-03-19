@@ -9,6 +9,7 @@ const { Account } = require("../models");
 
 exports.loginHandler = async (req, res) => {
   const { user_identity, password, remember } = req.body;
+
   try {
     const user = await Account.findOne({
       where: {
@@ -45,6 +46,7 @@ exports.loginHandler = async (req, res) => {
       ok: true,
       status: 200,
       message: "Login success",
+      remember,
       token,
     });
   } catch (error) {
