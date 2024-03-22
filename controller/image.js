@@ -1,7 +1,7 @@
 const { Image, Category, Account } = require("../models");
 const { Sequelize, Op } = require("sequelize");
 const path = require("path");
-const sharp = require("sharp");
+const Jimp = require("jimp");
 
 exports.getAllImage = async (req, res) => {
   const { categoryName } = req.query;
@@ -150,6 +150,7 @@ exports.uploadHandler = async (req, res) => {
         message: "Images are required",
       });
     }
+
     const imageObjects = await Promise.all(
       images.map(async (image, index) => {
         if (categoryId) {
@@ -167,25 +168,26 @@ exports.uploadHandler = async (req, res) => {
           }
         }
 
-        const inputFile = image.path;
+        // Read the original image
+        const originalImage = await Jimp.read(image.path);
 
-        const fileNameWithoutExtension = path.parse(image.filename).name;
+        // Create a thumbnail by resizing and reducing quality
+        const thumbnail = originalImage
+          .clone()
+          .quality(60)
+          .resize(1024, Jimp.AUTO);
 
-        const thumbnailFileName = `${fileNameWithoutExtension}_thumbnail.webp`;
-        const thumbnailFile = path.join(
+        // Define the new file name for the thumbnail
+        const thumbnailFileName = `${path.parse(image.filename).name}_thumbnail.jpg`;
+        const thumbnailFilePath = path.join(
           __dirname,
           "../public",
           thumbnailFileName
         );
 
-        await sharp(inputFile).webp({ quality: 30 }).toFile(thumbnailFile);
-        if (!captions) {
-          return {
-            img: image.filename,
-            categoryId: categoryId,
-            thumbnail: thumbnailFileName,
-          };
-        }
+        // Write the thumbnail to a new file
+        await thumbnail.writeAsync(thumbnailFilePath);
+
         return {
           img: image.filename,
           alt: captions,

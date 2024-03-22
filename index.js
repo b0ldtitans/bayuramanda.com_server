@@ -23,20 +23,12 @@ app.listen(PORT, (err) => {
   if (err) {
     console.log(`ERROR: ${err}`);
   } else {
-    console.log(
-      `Server is Running on${" "}${
-        process.env.NODE_ENV === "production" ? "Production" : "Development"
-      } Environment`
-    );
+    console.log("Server is running");
   }
 });
 
 app.get("/api", (req, res) => {
-  res.send(
-    `${req.protocol}://${req.hostname}:${PORT}/api is Running on${" "}${
-      process.env.NODE_ENV === "production" ? "Production" : "Development"
-    } Environment`
-  );
+  res.send(`${req.protocol}://${req.hostname}:${PORT}/api `);
 });
 
 // not found

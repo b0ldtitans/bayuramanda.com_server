@@ -1,0 +1,302 @@
+
+// WITH SHARP
+exports.uploadHandler = async (req, res) => {
+  const images = req.files;
+  const { categoryId } = req.params;
+  const { captions } = req.body;
+  const { id } = req.user;
+
+  try {
+    if (!id) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "Unauthorized",
+      });
+    }
+    const checkUser = await Account.findOne({
+      where: {
+        id,
+      },
+    });
+    if (!checkUser) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "Unauthorized",
+      });
+    }
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "Images are required",
+      });
+    }
+    const imageObjects = await Promise.all(
+      images.map(async (image, index) => {
+        if (categoryId) {
+          const category = await Category.findOne({
+            where: {
+              id: categoryId,
+            },
+          });
+          if (!category) {
+            return res.status(400).json({
+              ok: false,
+              status: 400,
+              message: `Category does not exist`,
+            });
+          }
+        }
+
+        const inputFile = image.path;
+
+        const fileNameWithoutExtension = path.parse(image.filename).name;
+
+        const thumbnailFileName = `${fileNameWithoutExtension}_thumbnail.webp`;
+        const thumbnailFile = path.join(
+          __dirname,
+          "../public",
+          thumbnailFileName
+        );
+
+        await sharp(inputFile).webp({ quality: 30 }).toFile(thumbnailFile);
+        if (!captions) {
+          return {
+            img: image.filename,
+            categoryId: categoryId,
+            thumbnail: thumbnailFileName,
+          };
+        }
+        return {
+          img: image.filename,
+          alt: captions,
+          categoryId: categoryId,
+          thumbnail: thumbnailFileName,
+        };
+      })
+    );
+
+    if (!imageObjects || imageObjects.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "No valid images provided",
+      });
+    }
+
+    const img = await Image.bulkCreate(imageObjects);
+
+    return res.status(200).json({
+      ok: true,
+      status: 200,
+      message: "Images successfully uploaded",
+      data: img,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      status: 500,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+
+//WITHOUT SHARP
+exports.uploadHandler = async (req, res) => {
+  const images = req.files;
+  const { categoryId } = req.params;
+  const { captions } = req.body;
+  const { id } = req.user;
+
+  try {
+    if (!id) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "Unauthorized",
+      });
+    }
+    const checkUser = await Account.findOne({
+      where: {
+        id,
+      },
+    });
+    if (!checkUser) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "Unauthorized",
+      });
+    }
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "Images are required",
+      });
+    }
+
+    const imageObjects = await Promise.all(
+      images.map(async (image, index) => {
+        if (categoryId) {
+          const category = await Category.findOne({
+            where: {
+              id: categoryId,
+            },
+          });
+          if (!category) {
+            return res.status(400).json({
+              ok: false,
+              status: 400,
+              message: `Category does not exist`,
+            });
+          }
+        }
+        return {
+          img: image.filename,
+          alt: captions,
+          categoryId: categoryId,
+          thumbnail: image.filename,
+        };
+      })
+    );
+
+    if (!imageObjects || imageObjects.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "No valid images provided",
+      });
+    }
+
+    const img = await Image.bulkCreate(imageObjects);
+
+    return res.status(200).json({
+      ok: true,
+      status: 200,
+      message: "Images successfully uploaded",
+      data: img,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      status: 500,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+
+
+    "jimp": "^0.22.12",
+// WITH JIMP
+exports.uploadHandler = async (req, res) => {
+  const images = req.files;
+  const { categoryId } = req.params;
+  const { captions } = req.body;
+  const { id } = req.user;
+
+  try {
+    if (!id) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "Unauthorized",
+      });
+    }
+    const checkUser = await Account.findOne({
+      where: {
+        id,
+      },
+    });
+    if (!checkUser) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "Unauthorized",
+      });
+    }
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "Images are required",
+      });
+    }
+
+    const imageObjects = await Promise.all(
+      images.map(async (image, index) => {
+        if (categoryId) {
+          const category = await Category.findOne({
+            where: {
+              id: categoryId,
+            },
+          });
+          if (!category) {
+            return res.status(400).json({
+              ok: false,
+              status: 400,
+              message: `Category does not exist`,
+            });
+          }
+        }
+
+        // Read the original image
+        const originalImage = await Jimp.read(image.path);
+
+        // Create a thumbnail by resizing and reducing quality
+        const thumbnail = originalImage
+          .clone()
+          .quality(60)
+          .resize(1024, Jimp.AUTO);
+
+        // Define the new file name for the thumbnail
+        const thumbnailFileName = `${path.parse(image.filename).name}_thumbnail.jpg`;
+        const thumbnailFilePath = path.join(
+          __dirname,
+          "../public",
+          thumbnailFileName
+        );
+
+        // Write the thumbnail to a new file
+        await thumbnail.writeAsync(thumbnailFilePath);
+
+        return {
+          img: image.filename,
+          alt: captions,
+          categoryId: categoryId,
+          thumbnail: thumbnailFileName,
+        };
+      })
+    );
+
+    if (!imageObjects || imageObjects.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        status: 400,
+        message: "No valid images provided",
+      });
+    }
+
+    const img = await Image.bulkCreate(imageObjects);
+
+    return res.status(200).json({
+      ok: true,
+      status: 200,
+      message: "Images successfully uploaded",
+      data: img,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      status: 500,
+      message: "Internal Server Error",
+    });
+  }
+};
